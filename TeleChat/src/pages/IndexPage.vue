@@ -1,42 +1,92 @@
 <template>
   <div>
-
+    <ClerkLoaded v-if="isLoaded">
     <q-list bordered>
-<q-item v-for="user in users" :key="user.user_id" class="q-my-sm" clickable v-ripple to="/chat">
+      <q-item
+        v-for="chat in userChats"
+        :key="chat.id"
+        class="q-my-sm"
+        clickable
+        v-ripple
+        to="/chat"
+        @click="currentRef(chat)"
+      >
         <q-item-section avatar>
           <q-avatar color="primary" text-color="white">
-            {{ user.user_name }}
+            {{ chatStore.getUserNameInitials(chat) }}
           </q-avatar>
         </q-item-section>
 
         <q-item-section>
-          <q-item-label>{{ `${user.user_name}  ${user.user_last_name } `}}</q-item-label>
-          <q-item-label caption lines="1">{{ }}</q-item-label>
+          <q-item-label>{{ chatStore.getUserName(chat) }}</q-item-label>
+          <q-item-label caption lines="1">{{ chatStore.getUserEmail(chat) }}</q-item-label>
         </q-item-section>
 
         <q-item-section side>
           <q-icon name="chat_bubble" color="green" />
         </q-item-section>
       </q-item>
-      </q-list>
+    </q-list>
+  </ClerkLoaded>
+  <div v-else>Loading...</div>
   </div>
 </template>
 
 <script setup>
-import { ref, watchEffect } from 'vue';
+import { onMounted, computed, ref, watch } from 'vue';
 import { useQuery } from '@vue/apollo-composable';
-import { USERS_QUERY } from 'src/queries/getUsers.js';
+import { GETUSER_BY_ID } from 'src/queries/getUsers.js';
+import { useSessionStore } from 'src/stores/sessionStore';
+import { useChatStore } from 'src/stores/chatStore';
+import { ClerkLoaded, useSignIn } from 'vue-clerk';
 
-defineOptions({
-  name: 'IndexPage'
-});
-const { result} = useQuery(USERS_QUERY);
+const sessionStore = useSessionStore();
+const chatStore = useChatStore();
+const {isLoaded, signIn} = useSignIn()
 
-const users = ref([]);
+const initializeComponent = async () => {
+  await sessionStore.fetchSession();
+  const userId = sessionStore.user?.id;
+  const token = sessionStore.token;
+  console.log(userId, token);
 
-watchEffect(() => {
-  if (result.value) {
-    users.value = result.value.users;
+  if (userId && token) {
+    chatStore.setUserId(userId);
+    chatStore.setToken(token);
+    loadUserChats(userId, token);
   }
+};
+
+const loadUserChats = (userId, token) => {
+  try {
+    const { result, loading, error } = useQuery(GETUSER_BY_ID, { user_id: userId });
+    watch(
+      () => result.value,
+      (newResult) => {
+        if (!loading.value && newResult) {
+          const chatData = newResult.chats ?? [];
+          chatStore.setChats(chatData);
+        } else if (loading.value) {
+          console.log('Data is still loading...');
+        } else if (error.value) {
+          console.error('Error in query:', error.value);
+        }
+      },
+      { immediate: true }
+    );
+  } catch (error) {
+    console.error('Error loading user chats:', error);
+  }
+};
+
+onMounted(() => {
+  initializeComponent();
 });
+
+const currentRef = (chat) => {
+  chatStore.getUserName(chat);
+  chatStore.setCurrentChatID(chat)
+}
+const userChats = computed(() => chatStore.chats);
+
 </script>

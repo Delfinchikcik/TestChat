@@ -3,32 +3,30 @@
     <q-card class="auth-card">
       <q-card-section class="text-center">
         <q-avatar size="100px" class="q-mb-md">
-          <img src="https://cdn.quasar.dev/logo/svg/quasar-logo.svg" alt="App Logo">
+          <img src="https://cdn.quasar.dev/logo/svg/quasar-logo.svg" alt="App Logo" />
         </q-avatar>
         <div class="text-h5 q-mb-md">Добро пожаловать в UseGramm</div>
         <div class="text-subtitle2 q-mb-md">Авторизуйтесь для продолжения</div>
       </q-card-section>
 
+      
+
       <SignedOut>
-        <q-card-section class="q-mb-md">
+        <SignIn path="/auth" class="q-mb-md">
           <q-btn 
             class="full-width q-pa-sm"
             label="Sign In"
             color="primary"
-            @click="signIn"
+           @click="signIn"
           />
-        </q-card-section>
+        </SignIn>
       </SignedOut>
 
       <SignedIn>
-        <q-card-section class="q-mb-md">
-          <q-btn 
-            class="full-width q-pa-sm"
-            label="Go to Home"
-            color="primary"
-            @click="goToHome"
-          />
-        </q-card-section>
+        <div>
+          <h1>Sign out</h1>
+          <SignOutButton @click="logOut"  />
+        </div>
       </SignedIn>
     </q-card>
   </q-page>
@@ -36,20 +34,26 @@
 
 <script setup>
 import { useRouter } from 'vue-router';
-import { SignedIn, SignedOut } from 'vue-clerk';
+import { SignedIn, SignedOut, SignOutButton } from 'vue-clerk';
 import { useClerk } from 'vue-clerk';
+import { useChatStore } from 'src/stores/chatStore';
 
-const router = useRouter();
-const { openSignIn, userProfile } = useClerk();
 
-const signIn = () => {
-  openSignIn({
-    afterSignInUrl: '/',
-  });
+// const router = useRouter();
+const { openSignIn } = useClerk();
+const { clearUserData } = useChatStore();
+
+const logOut = async () => {
+  try {
+   clearUserData();
+  } catch (error) {
+    console.error("Ошибка при выходе из системы:", error);
+  }
 };
 
-const goToHome = () => {
-  router.push('/');
+const signIn = () => {
+  openSignIn()
+    
 };
 </script>
 

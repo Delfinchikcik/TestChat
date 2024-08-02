@@ -15,7 +15,8 @@
           {{ title }}
         </q-toolbar-title>
 
-        <q-icon class="absolute-right q-ma-sm" name="settings" size="34px" />
+          <q-icon   class="absolute-right q-ma-sm cursor-pointer" name="account_circle" size="34px"
+          @click="goAuth"/>
       </q-toolbar>
     </q-header>
 
@@ -27,21 +28,27 @@
 
 <script setup>
 import { ref, watchEffect } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { useChatStore } from 'src/stores/chatStore';
 
 const title = ref('');
 const route = useRoute();
+const router = useRouter()
+const chatStore = useChatStore();
 
 watchEffect(() => {
   const currentPath = route.fullPath;
   if (currentPath === '/') {
     title.value = 'UseGramm';
   } else if (currentPath === '/chat') {
-    title.value = 'Чат';
+    title.value = chatStore.secondUserName;
   } else if (currentPath === '/auth') {
     title.value = 'Авторизация';}
 
 });
+const goAuth = () => {
+  router.push('/auth')
+}
 </script>
 
 <style>

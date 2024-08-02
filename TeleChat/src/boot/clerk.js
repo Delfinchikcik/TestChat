@@ -1,47 +1,41 @@
-// import { boot } from 'quasar/wrappers';
-// import { clerkPlugin } from 'vue-clerk'
-
-// const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
-
-// if (!PUBLISHABLE_KEY) {
-//   throw new Error('Missing Publishable Key')
-// }
-
-// export default boot(({ app }) => {
-//     app.use(clerkPlugin, {
-//         publishableKey: PUBLISHABLE_KEY
-//       })
-//   });
-  
-// boot/clerk.js
 import { boot } from 'quasar/wrappers';
-import { clerkPlugin, useClerk } from 'vue-clerk'; 
+import { clerkPlugin, useClerk, useSession } from 'vue-clerk';
 import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client/core';
 import { setContext } from '@apollo/client/link/context';
 
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-if (!publishableKey) {
-  throw new Error('Missing publishableKey. You can get your key at https://dashboard.clerk.com/last-active?path=api-keys.');
+if (!PUBLISHABLE_KEY) {
+  throw new Error('Missing Publishable Key');
 }
 
 const httpLink = createHttpLink({
   uri: 'https://tele-chat.hasura.app/v1/graphql'
 });
 
-
 const authLink = setContext(async (_, { headers }) => {
-  const clerk = useClerk();
-  const token = await clerk.session.getToken();
-  return {
-    headers: {
-      ...headers,
-      authorization: token ? `Bearer ${token}` : ''
+  try {
+    const { session } = useSession();
+    if (!session) {
+      console.error("No session object found");
+      return { headers };
     }
-  };
-});
 
+    const token = await session.getToken({ template: "HasuraTeleChat" });
+    console.log("JWT Token:", token); // Логирование JWT токена
+
+
+    return {
+      headers: {
+        ...headers,
+        authorization: token ? `Bearer ${token}` : ''
+      }
+    };
+  } catch (error) {
+    console.error("Error getting token:", error);
+    return { headers };
+  }
+});
 
 const apolloClient = new ApolloClient({
   link: authLink.concat(httpLink),
@@ -49,10 +43,9 @@ const apolloClient = new ApolloClient({
 });
 
 export default boot(({ app }) => {
+  console.log("Initializing Clerk plugin with key:", PUBLISHABLE_KEY); // Логирование инициализации Clerk
   app.use(clerkPlugin, {
-    publishableKey: publishableKey
+    publishableKey: PUBLISHABLE_KEY,
   });
-
-
   app.provide('apolloClient', apolloClient);
 });
